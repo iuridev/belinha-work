@@ -117,7 +117,7 @@ def _get_sheet(nome_aba):
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
     # 1. Variável de ambiente (produção / Vercel)
-    creds_json = os.getenv('GOOGLE_CREDENTIALS_JSON', '').strip()
+    creds_json = os.getenv('GOOGLE_CREDENTIALS_JSON', '').strip().lstrip('﻿')
     if creds_json:
         try:
             creds_dict = json.loads(creds_json)

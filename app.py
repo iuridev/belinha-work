@@ -600,6 +600,37 @@ def testar_csv():
     '''
 
 
+# ── Diagnóstico de credenciais Google ─────────────────────────────────────
+
+@app.route('/debug-creds')
+@login_required
+def debug_creds():
+    import os, json
+    val = os.getenv('GOOGLE_CREDENTIALS_JSON', '')
+    info = {
+        'var_definida': bool(val),
+        'tamanho_total': len(val),
+        'primeiros_10_chars': repr(val[:10]) if val else 'VAZIO',
+        'ultimos_5_chars':    repr(val[-5:]) if val else 'VAZIO',
+        'primeiro_char_ord':  ord(val[0]) if val else None,
+        'json_valido': False,
+        'erro_json': None,
+        'type': None,
+        'project_id': None,
+        'client_email': None,
+    }
+    if val:
+        try:
+            d = json.loads(val.strip().lstrip('﻿'))
+            info['json_valido'] = True
+            info['type']         = d.get('type')
+            info['project_id']   = d.get('project_id')
+            info['client_email'] = d.get('client_email')
+        except Exception as e:
+            info['erro_json'] = str(e)
+    return jsonify(info)
+
+
 # ── Diagnóstico do banco de dados ─────────────────────────────────────────
 
 @app.route('/testar-db')

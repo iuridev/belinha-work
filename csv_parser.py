@@ -3,7 +3,7 @@ import unicodedata
 import pandas as pd
 from io import StringIO
 
-DISC_COLUNAS = ['mat', 'port', 'ing', 'hist', 'geo', 'cie', 'filo', 'soc', 'bio', 'fis', 'qui', 'fin', 'tec', 'arte']
+DISC_COLUNAS = ['mat', 'port', 'ing', 'hist', 'geo', 'cie', 'filo', 'soc', 'bio', 'fis', 'qui', 'fin', 'tec', 'arte', 'rob', 'olp', 'olm']
 
 # Nomes alternativos de disciplina usados no SARESP → chave interna do sistema
 DISC_ALIAS = {
@@ -34,6 +34,14 @@ DISC_TAREFAS_ALIAS = {
     'ARTE':                 'arte',
     'ARTES':                'arte',
     'ARTES VISUAIS':        'arte',
+    # Inglês (nome alternativo do SEDUC)
+    'LINGUA ESTRANGEIRA INGLES':  'ing',
+    'LINGUA ESTRANGEIRA INGLES ': 'ing',
+    # Robótica
+    'ROBOTICA':             'rob',
+    # Orientação de Estudo
+    'ORIENTACAO DE ESTUDO LINGUA PORTUGUESA': 'olp',
+    'ORIENTACAO DE ESTUDO MATEMATICA':        'olm',
 }
 
 
@@ -192,6 +200,7 @@ def _detectar_disciplina_csv(texto):
     if not match:
         return None
     nome = _normalizar(match.group(1).strip())
+    nome = ' '.join(nome.split())  # colapsa espaços duplos (ex: traço "–" removido)
     return DISC_TAREFAS_ALIAS.get(nome)
 
 

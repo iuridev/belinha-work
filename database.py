@@ -34,18 +34,20 @@ def init_db():
             mat   REAL, port REAL, ing  REAL, hist REAL, geo  REAL,
             cie   REAL, filo REAL, soc  REAL, bio  REAL, fis  REAL,
             qui   REAL, fin  REAL, tec  REAL, arte REAL,
+            rob   REAL, olp  REAL, olm  REAL,
             data_importacao    TEXT,
             UNIQUE(bimestre, ano, turma, tipo_avaliacao)
         );
     ''')
     conn.commit()
 
-    # Migração 1: adiciona coluna tipo_avaliacao se não existir
-    try:
-        conn.execute('ALTER TABLE avaliacoes ADD COLUMN arte REAL')
-        conn.commit()
-    except Exception:
-        pass  # coluna já existe
+    # Migração 1: adiciona colunas novas se não existirem
+    for col in ('arte REAL', 'rob REAL', 'olp REAL', 'olm REAL'):
+        try:
+            conn.execute(f'ALTER TABLE avaliacoes ADD COLUMN {col}')
+            conn.commit()
+        except Exception:
+            pass  # coluna já existe
 
     # Migração 1b: adiciona coluna tipo_avaliacao se não existir
     try:
@@ -109,9 +111,10 @@ def salvar_avaliacoes(registros, bimestre, ano, tipo_avaliacao='PROVA PAULISTA')
                 INSERT INTO avaliacoes
                     (bimestre, ano, turma, tipo_avaliacao,
                      total_alunos, perc_participacao, perc_acertos,
-                     mat, port, ing, hist, geo, cie, filo, soc, bio, fis, qui, fin, tec, arte,
+                     mat, port, ing, hist, geo, cie, filo, soc, bio, fis, qui, fin, tec,
+                     arte, rob, olp, olm,
                      data_importacao)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(bimestre, ano, turma, tipo_avaliacao) DO UPDATE SET
                     total_alunos      = excluded.total_alunos,
                     perc_participacao = COALESCE(excluded.perc_participacao, perc_participacao),
@@ -130,6 +133,9 @@ def salvar_avaliacoes(registros, bimestre, ano, tipo_avaliacao='PROVA PAULISTA')
                     fin  = COALESCE(excluded.fin,  fin),
                     tec  = COALESCE(excluded.tec,  tec),
                     arte = COALESCE(excluded.arte, arte),
+                    rob  = COALESCE(excluded.rob,  rob),
+                    olp  = COALESCE(excluded.olp,  olp),
+                    olm  = COALESCE(excluded.olm,  olm),
                     data_importacao = excluded.data_importacao
             ''', (
                 bimestre, ano, r['turma'], tipo_avaliacao,
@@ -137,7 +143,7 @@ def salvar_avaliacoes(registros, bimestre, ano, tipo_avaliacao='PROVA PAULISTA')
                 r.get('mat'), r.get('port'), r.get('ing'), r.get('hist'),
                 r.get('geo'), r.get('cie'), r.get('filo'), r.get('soc'),
                 r.get('bio'), r.get('fis'), r.get('qui'), r.get('fin'), r.get('tec'),
-                r.get('arte'), agora
+                r.get('arte'), r.get('rob'), r.get('olp'), r.get('olm'), agora
             ))
             salvos += 1
         except Exception as e:
@@ -290,8 +296,9 @@ def sync_avaliacoes(rows):
                         (id, bimestre, ano, turma, tipo_avaliacao,
                          total_alunos, perc_participacao, perc_acertos,
                          mat, port, ing, hist, geo, cie, filo, soc,
-                         bio, fis, qui, fin, tec, arte, data_importacao)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                         bio, fis, qui, fin, tec, arte, rob, olp, olm,
+                         data_importacao)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     ON CONFLICT(bimestre, ano, turma, tipo_avaliacao) DO UPDATE SET
                         total_alunos      = excluded.total_alunos,
                         perc_participacao = COALESCE(excluded.perc_participacao, perc_participacao),
@@ -310,6 +317,9 @@ def sync_avaliacoes(rows):
                         fin  = COALESCE(excluded.fin,  fin),
                         tec  = COALESCE(excluded.tec,  tec),
                         arte = COALESCE(excluded.arte, arte),
+                        rob  = COALESCE(excluded.rob,  rob),
+                        olp  = COALESCE(excluded.olp,  olp),
+                        olm  = COALESCE(excluded.olm,  olm),
                         data_importacao = excluded.data_importacao
                 ''', (
                     _parse_int(r.get('id')),
@@ -327,6 +337,8 @@ def sync_avaliacoes(rows):
                     _parse_float(r.get('bio')),  _parse_float(r.get('fis')),
                     _parse_float(r.get('qui')),  _parse_float(r.get('fin')),
                     _parse_float(r.get('tec')),  _parse_float(r.get('arte')),
+                    _parse_float(r.get('rob')),  _parse_float(r.get('olp')),
+                    _parse_float(r.get('olm')),
                     str(r.get('data_importacao', '')),
                 ))
                 salvos += 1

@@ -14,7 +14,7 @@ CABECALHO_AVALIACOES = [
     'perc_participacao', 'perc_acertos',
     'MAT', 'PORT', 'ING', 'HIST', 'GEO', 'CIE',
     'FILO', 'SOC', 'BIO', 'FIS', 'QUI', 'FIN', 'TEC',
-    'data_importacao', 'ARTE'
+    'data_importacao', 'ARTE', 'ROB', 'OLP', 'OLM'
 ]
 
 
@@ -161,7 +161,7 @@ def adicionar_professor(nome, cpf):
     ws = _get_sheet('professores')
     todos = get_professores()
     novo_id = _proximo_id(todos)
-    ws.append_row([novo_id, nome, cpf, 'TRUE'], value_input_option='USER_ENTERED')
+    ws.append_row([novo_id, nome, cpf, 'TRUE'], value_input_option='RAW')
     return novo_id
 
 
@@ -256,7 +256,7 @@ def salvar_avaliacoes_planilha(registros, bimestre, ano, tipo_avaliacao='PROVA P
         'turma': 'turma', 'tipo_avaliacao': 'tipo_avaliacao',
         'total_alunos': 'total_alunos', 'perc_participacao': 'perc_participacao',
         'perc_acertos': 'perc_acertos', 'data_importacao': None,
-        **{d: d.lower() for d in ['MAT','PORT','ING','HIST','GEO','CIE','FILO','SOC','BIO','FIS','QUI','FIN','TEC','ARTE']}
+        **{d: d.lower() for d in ['MAT','PORT','ING','HIST','GEO','CIE','FILO','SOC','BIO','FIS','QUI','FIN','TEC','ARTE','ROB','OLP','OLM']}
     }
 
     for r in registros:
@@ -299,7 +299,7 @@ def salvar_avaliacoes_planilha(registros, bimestre, ano, tipo_avaliacao='PROVA P
             merged[idx_data] = agora
             col_fim = chr(ord('A') + len(CABECALHO_AVALIACOES) - 1)
             ws.update(f'A{row_idx}:{col_fim}{row_idx}',
-                      [merged], value_input_option='USER_ENTERED')
+                      [merged], value_input_option='RAW')
         else:
             novas_linhas.append(nova)
             proximo_id += 1
@@ -307,7 +307,7 @@ def salvar_avaliacoes_planilha(registros, bimestre, ano, tipo_avaliacao='PROVA P
         gravados += 1
 
     if novas_linhas:
-        ws.append_rows(novas_linhas, value_input_option='USER_ENTERED')
+        ws.append_rows(novas_linhas, value_input_option='RAW')
 
     return gravados
 

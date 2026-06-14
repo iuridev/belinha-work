@@ -158,6 +158,19 @@ def adicionar_professor(nome, cpf):
     return novo_id
 
 
+def atualizar_professor(professor_id, nome, cpf):
+    ws = _get_sheet('professores')
+    registros = ws.get_all_records()
+    for i, row in enumerate(registros, start=2):
+        if str(row.get('id')) == str(professor_id):
+            col_nome = _col_index(ws, 'nome')
+            col_cpf  = _col_index(ws, 'cpf')
+            ws.update_cell(i, col_nome, nome)
+            ws.update_cell(i, col_cpf,  cpf)
+            return True
+    return False
+
+
 def inativar_professor(professor_id):
     ws = _get_sheet('professores')
     registros = ws.get_all_records()

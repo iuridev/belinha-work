@@ -34,6 +34,7 @@
         <td><span class="chip chip-verde">Ativo</span></td>
         <td style="display:flex;gap:6px">
           <a href="{{ url_for('ficha_professor', professor_id=p.id, ano=ano) }}" class="btn btn-sm">Ver ficha</a>
+          <a href="{{ url_for('editar_professor', professor_id=p.id) }}" class="btn btn-sm">Editar</a>
           <form method="POST" action="{{ url_for('inativar_professor', professor_id=p.id) }}"
                 onsubmit="return confirm('Inativar {{ p.nome }}?')">
             <button type="submit" class="btn btn-sm btn-perigo">Inativar</button>

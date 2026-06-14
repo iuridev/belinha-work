@@ -251,6 +251,36 @@ def novo_professor():
     return render_template('novo_professor.html')
 
 
+@app.route('/professores/<professor_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_professor(professor_id):
+    lista = sheets.get_professores()
+    professor = next((p for p in lista if str(p.get('id')) == str(professor_id)), None)
+
+    if not professor:
+        flash('Professor não encontrado.', 'erro')
+        return redirect(url_for('professores'))
+
+    if request.method == 'POST':
+        nome = request.form.get('nome', '').strip()
+        cpf  = request.form.get('cpf', '').strip()
+
+        if not nome:
+            flash('O nome é obrigatório.', 'erro')
+            return render_template('editar_professor.html', professor=professor)
+
+        try:
+            sheets.atualizar_professor(professor_id, nome, cpf)
+            flash(f'Professor "{nome}" atualizado com sucesso.', 'sucesso')
+            return redirect(url_for('professores'))
+        except FileNotFoundError as e:
+            flash(str(e), 'erro')
+        except Exception as e:
+            flash(f'Erro ao atualizar na planilha: {e}', 'erro')
+
+    return render_template('editar_professor.html', professor=professor)
+
+
 @app.route('/professores/inativar/<professor_id>', methods=['POST'])
 @login_required
 def inativar_professor(professor_id):

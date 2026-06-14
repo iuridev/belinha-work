@@ -237,8 +237,10 @@ def salvar_avaliacoes_planilha(registros, bimestre, ano, tipo_avaliacao='PROVA P
 
     existentes = ws.get_all_records()
     # Mapeia chave → (linha_na_planilha, dados_existentes)
+    # get_all_records() retorna chaves com o mesmo case do cabeçalho (ex: 'PORT', 'MAT')
     existentes_map = {
-        (str(r.get('bimestre')), str(r.get('ano')), str(r.get('turma')), str(r.get('tipo_avaliacao', ''))): (i, r)
+        (str(r.get('bimestre')), str(r.get('ano')),
+         str(r.get('turma')), str(r.get('tipo_avaliacao', ''))): (i, r)
         for i, r in enumerate(existentes, start=2)
     }
 
@@ -247,33 +249,53 @@ def salvar_avaliacoes_planilha(registros, bimestre, ano, tipo_avaliacao='PROVA P
     novas_linhas = []
     gravados = 0
 
-    cols_lower = [c.lower() for c in CABECALHO_AVALIACOES]
+    # Mapa: coluna do cabeçalho → chave no registro (lowercase)
+    # CABECALHO usa maiúsculo para disciplinas (MAT, PORT...) mas r usa minúsculo (mat, port...)
+    CABECALHO_PARA_CHAVE = {
+        'id': None, 'bimestre': 'bimestre', 'ano': 'ano',
+        'turma': 'turma', 'tipo_avaliacao': 'tipo_avaliacao',
+        'total_alunos': 'total_alunos', 'perc_participacao': 'perc_participacao',
+        'perc_acertos': 'perc_acertos', 'data_importacao': None,
+        **{d: d.lower() for d in ['MAT','PORT','ING','HIST','GEO','CIE','FILO','SOC','BIO','FIS','QUI','FIN','TEC']}
+    }
 
     for r in registros:
         chave = (str(bimestre), str(ano), str(r['turma']), str(tipo_avaliacao))
-        nova = [
-            proximo_id, bimestre, ano, r['turma'], tipo_avaliacao,
-            r.get('total_alunos', ''),
-            r.get('perc_participacao', '') or '',
-            r.get('perc_acertos', '') or '',
-            r.get('mat', '') or '',  r.get('port', '') or '',
-            r.get('ing', '') or '',  r.get('hist', '') or '',
-            r.get('geo', '') or '',  r.get('cie', '') or '',
-            r.get('filo', '') or '', r.get('soc', '') or '',
-            r.get('bio', '') or '',  r.get('fis', '') or '',
-            r.get('qui', '') or '',  r.get('fin', '') or '',
-            r.get('tec', '') or '',  agora
-        ]
+
+        # Monta nova linha na ordem exata de CABECALHO_AVALIACOES
+        nova = []
+        for col in CABECALHO_AVALIACOES:
+            if col == 'id':
+                nova.append(proximo_id)
+            elif col == 'data_importacao':
+                nova.append(agora)
+            elif col == 'bimestre':
+                nova.append(bimestre)
+            elif col == 'ano':
+                nova.append(ano)
+            elif col == 'tipo_avaliacao':
+                nova.append(tipo_avaliacao)
+            else:
+                chave_r = CABECALHO_PARA_CHAVE.get(col, col.lower())
+                v = r.get(chave_r)
+                nova.append(v if v is not None else '')
 
         if chave in existentes_map:
-            # Merge: COALESCE — mantém valor existente se o novo chega vazio
             row_idx, existing = existentes_map[chave]
-            merged = [
-                nv if nv not in ('', None) else (existing.get(col, '') or '')
-                for col, nv in zip(cols_lower, nova)
-            ]
-            merged[-1] = agora  # sempre atualiza data_importacao
-            ws.update(f'A{row_idx}:{chr(ord("A") + len(CABECALHO_AVALIACOES) - 1)}{row_idx}',
+            # Merge: se novo valor é vazio, mantém o existente
+            # existing usa as chaves do cabeçalho (case original: 'PORT', 'MAT', etc.)
+            merged = []
+            for col, nv in zip(CABECALHO_AVALIACOES, nova):
+                if col == 'id':
+                    merged.append(existing.get('id', proximo_id))  # preserva ID existente
+                elif col == 'data_importacao':
+                    merged.append(agora)
+                elif nv != '' and nv is not None:
+                    merged.append(nv)
+                else:
+                    merged.append(existing.get(col, '') or '')
+            col_fim = chr(ord('A') + len(CABECALHO_AVALIACOES) - 1)
+            ws.update(f'A{row_idx}:{col_fim}{row_idx}',
                       [merged], value_input_option='USER_ENTERED')
         else:
             novas_linhas.append(nova)

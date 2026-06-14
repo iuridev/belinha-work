@@ -104,16 +104,25 @@ def salvar_avaliacoes(registros, bimestre, ano, tipo_avaliacao='PROVA PAULISTA')
                      total_alunos, perc_participacao, perc_acertos,
                      mat, port, ing, hist, geo, cie, filo, soc, bio, fis, qui, fin, tec,
                      data_importacao)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(bimestre, ano, turma, tipo_avaliacao) DO UPDATE SET
-                    total_alunos=excluded.total_alunos,
-                    perc_participacao=excluded.perc_participacao,
-                    perc_acertos=excluded.perc_acertos,
-                    mat=excluded.mat, port=excluded.port, ing=excluded.ing,
-                    hist=excluded.hist, geo=excluded.geo, cie=excluded.cie,
-                    filo=excluded.filo, soc=excluded.soc, bio=excluded.bio,
-                    fis=excluded.fis, qui=excluded.qui, fin=excluded.fin,
-                    tec=excluded.tec, data_importacao=excluded.data_importacao
+                    total_alunos      = excluded.total_alunos,
+                    perc_participacao = COALESCE(excluded.perc_participacao, perc_participacao),
+                    perc_acertos      = COALESCE(excluded.perc_acertos,      perc_acertos),
+                    mat  = COALESCE(excluded.mat,  mat),
+                    port = COALESCE(excluded.port, port),
+                    ing  = COALESCE(excluded.ing,  ing),
+                    hist = COALESCE(excluded.hist, hist),
+                    geo  = COALESCE(excluded.geo,  geo),
+                    cie  = COALESCE(excluded.cie,  cie),
+                    filo = COALESCE(excluded.filo, filo),
+                    soc  = COALESCE(excluded.soc,  soc),
+                    bio  = COALESCE(excluded.bio,  bio),
+                    fis  = COALESCE(excluded.fis,  fis),
+                    qui  = COALESCE(excluded.qui,  qui),
+                    fin  = COALESCE(excluded.fin,  fin),
+                    tec  = COALESCE(excluded.tec,  tec),
+                    data_importacao = excluded.data_importacao
             ''', (
                 bimestre, ano, r['turma'], tipo_avaliacao,
                 r['total_alunos'], r['perc_participacao'], r['perc_acertos'],
@@ -276,14 +285,23 @@ def sync_avaliacoes(rows):
                          bio, fis, qui, fin, tec, data_importacao)
                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     ON CONFLICT(bimestre, ano, turma, tipo_avaliacao) DO UPDATE SET
-                        total_alunos=excluded.total_alunos,
-                        perc_participacao=excluded.perc_participacao,
-                        perc_acertos=excluded.perc_acertos,
-                        mat=excluded.mat, port=excluded.port, ing=excluded.ing,
-                        hist=excluded.hist, geo=excluded.geo, cie=excluded.cie,
-                        filo=excluded.filo, soc=excluded.soc, bio=excluded.bio,
-                        fis=excluded.fis, qui=excluded.qui, fin=excluded.fin,
-                        tec=excluded.tec, data_importacao=excluded.data_importacao
+                        total_alunos      = excluded.total_alunos,
+                        perc_participacao = COALESCE(excluded.perc_participacao, perc_participacao),
+                        perc_acertos      = COALESCE(excluded.perc_acertos,      perc_acertos),
+                        mat  = COALESCE(excluded.mat,  mat),
+                        port = COALESCE(excluded.port, port),
+                        ing  = COALESCE(excluded.ing,  ing),
+                        hist = COALESCE(excluded.hist, hist),
+                        geo  = COALESCE(excluded.geo,  geo),
+                        cie  = COALESCE(excluded.cie,  cie),
+                        filo = COALESCE(excluded.filo, filo),
+                        soc  = COALESCE(excluded.soc,  soc),
+                        bio  = COALESCE(excluded.bio,  bio),
+                        fis  = COALESCE(excluded.fis,  fis),
+                        qui  = COALESCE(excluded.qui,  qui),
+                        fin  = COALESCE(excluded.fin,  fin),
+                        tec  = COALESCE(excluded.tec,  tec),
+                        data_importacao = excluded.data_importacao
                 ''', (
                     _parse_int(r.get('id')),
                     _parse_int(r.get('bimestre')),

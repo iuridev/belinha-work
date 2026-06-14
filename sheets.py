@@ -228,43 +228,63 @@ def remover_vinculo_planilha(vinculo_id):
 # ── Avaliações ──────────────────────────────────────────────────────────────
 
 def salvar_avaliacoes_planilha(registros, bimestre, ano, tipo_avaliacao='PROVA PAULISTA'):
-    """Grava os registros importados na aba 'avaliacoes' da planilha."""
+    """Grava os registros importados na aba 'avaliacoes' da planilha.
+    Ao conflitar (mesma turma/bimestre/ano/tipo), faz merge: mantém valores existentes
+    nas colunas que chegam vazias — necessário para imports de TAREFAS por disciplina.
+    """
     ws = _get_sheet('avaliacoes')
     _garantir_cabecalho(ws, CABECALHO_AVALIACOES)
 
     existentes = ws.get_all_records()
-    chaves_existentes = {
-        (str(r.get('bimestre')), str(r.get('ano')), str(r.get('turma')), str(r.get('tipo_avaliacao', '')))
-        for r in existentes
+    # Mapeia chave → (linha_na_planilha, dados_existentes)
+    existentes_map = {
+        (str(r.get('bimestre')), str(r.get('ano')), str(r.get('turma')), str(r.get('tipo_avaliacao', ''))): (i, r)
+        for i, r in enumerate(existentes, start=2)
     }
 
     proximo_id = _proximo_id(existentes)
     agora = datetime.now().strftime('%d/%m/%Y %H:%M')
     novas_linhas = []
+    gravados = 0
+
+    cols_lower = [c.lower() for c in CABECALHO_AVALIACOES]
 
     for r in registros:
         chave = (str(bimestre), str(ano), str(r['turma']), str(tipo_avaliacao))
-        if chave in chaves_existentes:
-            continue
-        novas_linhas.append([
+        nova = [
             proximo_id, bimestre, ano, r['turma'], tipo_avaliacao,
             r.get('total_alunos', ''),
             r.get('perc_participacao', '') or '',
             r.get('perc_acertos', '') or '',
-            r.get('mat', '') or '', r.get('port', '') or '',
+            r.get('mat', '') or '',  r.get('port', '') or '',
             r.get('ing', '') or '',  r.get('hist', '') or '',
             r.get('geo', '') or '',  r.get('cie', '') or '',
             r.get('filo', '') or '', r.get('soc', '') or '',
             r.get('bio', '') or '',  r.get('fis', '') or '',
             r.get('qui', '') or '',  r.get('fin', '') or '',
             r.get('tec', '') or '',  agora
-        ])
-        proximo_id += 1
+        ]
+
+        if chave in existentes_map:
+            # Merge: COALESCE — mantém valor existente se o novo chega vazio
+            row_idx, existing = existentes_map[chave]
+            merged = [
+                nv if nv not in ('', None) else (existing.get(col, '') or '')
+                for col, nv in zip(cols_lower, nova)
+            ]
+            merged[-1] = agora  # sempre atualiza data_importacao
+            ws.update(f'A{row_idx}:{chr(ord("A") + len(CABECALHO_AVALIACOES) - 1)}{row_idx}',
+                      [merged], value_input_option='USER_ENTERED')
+        else:
+            novas_linhas.append(nova)
+            proximo_id += 1
+
+        gravados += 1
 
     if novas_linhas:
         ws.append_rows(novas_linhas, value_input_option='USER_ENTERED')
 
-    return len(novas_linhas)
+    return gravados
 
 
 # ── Utilitários ─────────────────────────────────────────────────────────────

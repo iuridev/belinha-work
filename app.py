@@ -11,6 +11,22 @@ from config import SECRET_KEY, DISCIPLINAS, DISCIPLINAS_NOMES
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
+# Cria/migra as tabelas ao importar o módulo (roda tanto localmente quanto no Vercel)
+db.init_db()
+
+# Flag por instância: sincroniza o cache do Sheets uma vez por cold start
+_cache_pronto = False
+
+@app.before_request
+def _sync_no_cold_start():
+    global _cache_pronto
+    if not _cache_pronto:
+        _cache_pronto = True
+        try:
+            _sincronizar_cache()
+        except Exception as e:
+            print(f'Aviso: sync inicial falhou ({e}) — app continua sem cache de Sheets')
+
 
 # ── Decorador de autenticação ──────────────────────────────────────────────
 
@@ -608,13 +624,6 @@ def _sincronizar_cache():
 # ── Inicialização ──────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    db.init_db()
     print('\n  Sistema Belinha iniciado!')
-    print('  Sincronizando com Google Sheets (API)...')
-    r = _sincronizar_cache()
-    print(f'  Cache: {r["vinculos"]} vínculos · {r["avaliacoes"]} avaliações carregadas')
-    if r['erros']:
-        for e in r['erros']:
-            print(f'  ERRO: {e}')
     print('  Acesse: http://127.0.0.1:5000\n')
     app.run(debug=True)

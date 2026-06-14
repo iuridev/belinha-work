@@ -111,7 +111,7 @@ def salvar_avaliacoes(registros, bimestre, ano, tipo_avaliacao='PROVA PAULISTA')
                      total_alunos, perc_participacao, perc_acertos,
                      mat, port, ing, hist, geo, cie, filo, soc, bio, fis, qui, fin, tec, arte,
                      data_importacao)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(bimestre, ano, turma, tipo_avaliacao) DO UPDATE SET
                     total_alunos      = excluded.total_alunos,
                     perc_participacao = COALESCE(excluded.perc_participacao, perc_participacao),

@@ -80,10 +80,11 @@ def parse_csv(conteudo_bytes):
 
     # Detecta formato pelo conteúdo das colunas
     tem_qualidade = any('QUALIDADE' in c for c in cols_norm)
+    tem_tarefas   = any('TAREFAS' in c for c in cols_norm)
     tem_acertos   = any('ACERTO' in c for c in cols_norm)
     tem_nota_med  = any('MEDIA' in c for c in cols_norm)
 
-    if tem_qualidade:
+    if tem_qualidade or tem_tarefas:
         disc_col = _detectar_disciplina_csv(texto)
         return _parse_tarefas(df, cols_norm, idx_turma, disc_col)
     elif tem_acertos:
@@ -204,6 +205,8 @@ def _parse_tarefas(df, cols_norm, idx_turma, disc_col=None):
     """
     idx_matriculas = next((i for i, c in enumerate(cols_norm) if 'MATRICULA' in c), 1)
     idx_iq = next((i for i, c in enumerate(cols_norm) if 'QUALIDADE' in c), None)
+    if idx_iq is None:
+        idx_iq = next((i for i, c in enumerate(cols_norm) if 'ACERTO' in c), None)
     idx_perc_tarefas = next(
         (i for i, c in enumerate(cols_norm)
          if '%' in c and 'TAREFAS' in c and 'REALIZAD' in c and 'ALUNOS' not in c),

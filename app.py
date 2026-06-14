@@ -664,6 +664,95 @@ def testar_db():
     })
 
 
+# ── Reparo de valores ×10 na planilha ────────────────────────────────────
+
+@app.route('/admin/reparar-valores', methods=['GET', 'POST'])
+@login_required
+def reparar_valores():
+    """Detecta e corrige valores >100 em colunas de disciplina (causados por parser ×10 errado)."""
+    DISC_COLS = ['MAT','PORT','ING','HIST','GEO','CIE','FILO','SOC','BIO','FIS','QUI','FIN','TEC','ARTE']
+
+    if request.method == 'GET':
+        # Apenas inspeciona — não altera nada
+        try:
+            ws = sheets._get_sheet('avaliacoes')
+            todas = ws.get_all_values()
+        except Exception as e:
+            flash(f'Erro ao ler planilha: {e}', 'erro')
+            return redirect(url_for('dashboard'))
+
+        if len(todas) < 2:
+            flash('Planilha de avaliações está vazia.', 'erro')
+            return redirect(url_for('dashboard'))
+
+        header = todas[0]
+        problemas = []
+        for row_idx, row in enumerate(todas[1:], start=2):
+            r = {header[i]: (row[i] if i < len(row) else '') for i in range(len(header))}
+            for col in DISC_COLS:
+                val = r.get(col, '')
+                if val == '':
+                    continue
+                try:
+                    f = float(str(val).replace(',', '.'))
+                    if f > 100:
+                        problemas.append({
+                            'linha': row_idx,
+                            'turma': r.get('turma', ''),
+                            'bimestre': r.get('bimestre', ''),
+                            'tipo': r.get('tipo_avaliacao', ''),
+                            'disciplina': col,
+                            'valor_errado': round(f, 1),
+                            'valor_correto': round(f / 10, 1),
+                        })
+                except (ValueError, TypeError):
+                    pass
+
+        return render_template('reparar_valores.html', problemas=problemas)
+
+    # POST → aplica correção
+    try:
+        ws = sheets._get_sheet('avaliacoes')
+        todas = ws.get_all_values()
+    except Exception as e:
+        flash(f'Erro ao ler planilha: {e}', 'erro')
+        return redirect(url_for('dashboard'))
+
+    header = todas[0]
+    col_fim = chr(ord('A') + len(header) - 1)
+    corrigidos = 0
+
+    for row_idx, row in enumerate(todas[1:], start=2):
+        r = {header[i]: (row[i] if i < len(row) else '') for i in range(len(header))}
+        nova_linha = list(row) + [''] * (len(header) - len(row))  # garante tamanho certo
+        alterou = False
+
+        for col in DISC_COLS:
+            if col not in header:
+                continue
+            col_i = header.index(col)
+            val = nova_linha[col_i]
+            if val == '':
+                continue
+            try:
+                f = float(str(val).replace(',', '.'))
+                if f > 100:
+                    nova_linha[col_i] = round(f / 10, 1)
+                    alterou = True
+            except (ValueError, TypeError):
+                pass
+
+        if alterou:
+            ws.update(f'A{row_idx}:{col_fim}{row_idx}', [nova_linha],
+                      value_input_option='RAW')
+            corrigidos += 1
+
+    # Ressincroniza o cache local
+    _sincronizar_cache()
+    flash(f'{corrigidos} linhas corrigidas na planilha.', 'sucesso')
+    return redirect(url_for('dashboard'))
+
+
 # ── Sincronização cache ────────────────────────────────────────────────────
 
 def _sincronizar_cache():

@@ -102,7 +102,11 @@
       {% endfor %}
     </tbody>
   </table>
+  {% if tipo_sel == 'TAREFAS' %}
+  <p class="legenda-tabela">Valor exibido: <strong>Índice de Qualidade (IQ)</strong> da turma · % Tarefas Realizadas registrada em participação · Dado por turma, não por disciplina · Verde ≥ 50% · Vermelho &lt; 50%</p>
+  {% else %}
   <p class="legenda-tabela">▲▼ Diferença em relação à média da escola naquele tipo · Verde ≥ 50% · Vermelho &lt; 50%</p>
+  {% endif %}
 
   {% else %}
   {# ── Modo: todos os tipos — agrupa por tipo e bimestre ── #}

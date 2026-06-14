@@ -362,7 +362,8 @@ def get_professor_performance(professor_id, ano, tipo_avaliacao=None):
             # Chave composta quando "todos os tipos" para não sobrescrever bimestres iguais
             chave = f"{bim}|{tipo}" if not tipo_avaliacao else bim
             bimestres_set.add(bim)
-            valor = aval[disc]
+            # TAREFAS não tem colunas por disciplina — usa perc_acertos (IQ) como fallback
+            valor = aval[disc] if aval[disc] is not None else aval['perc_acertos']
             por_bimestre[chave] = {
                 'valor': valor,
                 'tipo': tipo,
@@ -392,6 +393,19 @@ def _media_escola(conn, disc, ano, bimestre, tipo_avaliacao=None):
     else:
         row = conn.execute(
             f'SELECT AVG({disc}) FROM avaliacoes WHERE ano=? AND bimestre=? AND {disc} > 0',
+            (ano, bimestre)
+        ).fetchone()
+    if row and row[0]:
+        return round(row[0], 1)
+    # Fallback para TAREFAS (sem colunas por disciplina): usa perc_acertos (IQ)
+    if tipo_avaliacao:
+        row = conn.execute(
+            'SELECT AVG(perc_acertos) FROM avaliacoes WHERE ano=? AND bimestre=? AND tipo_avaliacao=? AND perc_acertos > 0',
+            (ano, bimestre, tipo_avaliacao)
+        ).fetchone()
+    else:
+        row = conn.execute(
+            'SELECT AVG(perc_acertos) FROM avaliacoes WHERE ano=? AND bimestre=? AND perc_acertos > 0',
             (ano, bimestre)
         ).fetchone()
     return round(row[0], 1) if row and row[0] else None

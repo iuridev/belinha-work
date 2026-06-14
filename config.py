@@ -22,7 +22,7 @@ SHEETS_URLS = {
     'avaliacoes':      'https://docs.google.com/spreadsheets/d/e/2PACX-1vTJwCTUI4iRBDii_kwcu5_6gVL2xDwczYZoRL37RIgk0KT6CPBp8L1RLJgpSovOaHVNbd-kBSvA8HzH/pub?gid=816095818&single=true&output=csv',
 }
 
-TIPOS_AVALIACAO_PADRAO = ['PROVA PAULISTA', 'SARESP', 'SAEB']
+TIPOS_AVALIACAO_PADRAO = ['PROVA PAULISTA', 'SARESP', 'SAEB', 'TAREFAS']
 
 DISCIPLINAS = ['MAT', 'PORT', 'ING', 'HIST', 'GEO', 'CIE', 'FILO', 'SOC', 'BIO', 'FIS', 'QUI', 'FIN', 'TEC']
 

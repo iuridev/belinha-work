@@ -24,7 +24,7 @@ SHEETS_URLS = {
 
 TIPOS_AVALIACAO_PADRAO = ['PROVA PAULISTA', 'SARESP', 'SAEB', 'TAREFAS']
 
-DISCIPLINAS = ['MAT', 'PORT', 'ING', 'HIST', 'GEO', 'CIE', 'FILO', 'SOC', 'BIO', 'FIS', 'QUI', 'FIN', 'TEC']
+DISCIPLINAS = ['MAT', 'PORT', 'ING', 'HIST', 'GEO', 'CIE', 'FILO', 'SOC', 'BIO', 'FIS', 'QUI', 'FIN', 'TEC', 'ARTE']
 
 DISCIPLINAS_NOMES = {
     'MAT':  'Matemática',
@@ -40,4 +40,5 @@ DISCIPLINAS_NOMES = {
     'QUI':  'Química',
     'FIN':  'Financeira',
     'TEC':  'Tecnologia',
+    'ARTE': 'Arte',
 }

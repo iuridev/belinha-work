@@ -33,7 +33,7 @@ def init_db():
             perc_acertos       REAL,
             mat   REAL, port REAL, ing  REAL, hist REAL, geo  REAL,
             cie   REAL, filo REAL, soc  REAL, bio  REAL, fis  REAL,
-            qui   REAL, fin  REAL, tec  REAL,
+            qui   REAL, fin  REAL, tec  REAL, arte REAL,
             data_importacao    TEXT,
             UNIQUE(bimestre, ano, turma, tipo_avaliacao)
         );
@@ -41,6 +41,13 @@ def init_db():
     conn.commit()
 
     # Migração 1: adiciona coluna tipo_avaliacao se não existir
+    try:
+        conn.execute('ALTER TABLE avaliacoes ADD COLUMN arte REAL')
+        conn.commit()
+    except Exception:
+        pass  # coluna já existe
+
+    # Migração 1b: adiciona coluna tipo_avaliacao se não existir
     try:
         conn.execute('ALTER TABLE avaliacoes ADD COLUMN tipo_avaliacao TEXT')
         conn.commit()
@@ -102,9 +109,9 @@ def salvar_avaliacoes(registros, bimestre, ano, tipo_avaliacao='PROVA PAULISTA')
                 INSERT INTO avaliacoes
                     (bimestre, ano, turma, tipo_avaliacao,
                      total_alunos, perc_participacao, perc_acertos,
-                     mat, port, ing, hist, geo, cie, filo, soc, bio, fis, qui, fin, tec,
+                     mat, port, ing, hist, geo, cie, filo, soc, bio, fis, qui, fin, tec, arte,
                      data_importacao)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(bimestre, ano, turma, tipo_avaliacao) DO UPDATE SET
                     total_alunos      = excluded.total_alunos,
                     perc_participacao = COALESCE(excluded.perc_participacao, perc_participacao),
@@ -122,6 +129,7 @@ def salvar_avaliacoes(registros, bimestre, ano, tipo_avaliacao='PROVA PAULISTA')
                     qui  = COALESCE(excluded.qui,  qui),
                     fin  = COALESCE(excluded.fin,  fin),
                     tec  = COALESCE(excluded.tec,  tec),
+                    arte = COALESCE(excluded.arte, arte),
                     data_importacao = excluded.data_importacao
             ''', (
                 bimestre, ano, r['turma'], tipo_avaliacao,
@@ -129,7 +137,7 @@ def salvar_avaliacoes(registros, bimestre, ano, tipo_avaliacao='PROVA PAULISTA')
                 r.get('mat'), r.get('port'), r.get('ing'), r.get('hist'),
                 r.get('geo'), r.get('cie'), r.get('filo'), r.get('soc'),
                 r.get('bio'), r.get('fis'), r.get('qui'), r.get('fin'), r.get('tec'),
-                agora
+                r.get('arte'), agora
             ))
             salvos += 1
         except Exception as e:
@@ -282,8 +290,8 @@ def sync_avaliacoes(rows):
                         (id, bimestre, ano, turma, tipo_avaliacao,
                          total_alunos, perc_participacao, perc_acertos,
                          mat, port, ing, hist, geo, cie, filo, soc,
-                         bio, fis, qui, fin, tec, data_importacao)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                         bio, fis, qui, fin, tec, arte, data_importacao)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     ON CONFLICT(bimestre, ano, turma, tipo_avaliacao) DO UPDATE SET
                         total_alunos      = excluded.total_alunos,
                         perc_participacao = COALESCE(excluded.perc_participacao, perc_participacao),
@@ -301,6 +309,7 @@ def sync_avaliacoes(rows):
                         qui  = COALESCE(excluded.qui,  qui),
                         fin  = COALESCE(excluded.fin,  fin),
                         tec  = COALESCE(excluded.tec,  tec),
+                        arte = COALESCE(excluded.arte, arte),
                         data_importacao = excluded.data_importacao
                 ''', (
                     _parse_int(r.get('id')),
@@ -317,7 +326,7 @@ def sync_avaliacoes(rows):
                     _parse_float(r.get('filo')), _parse_float(r.get('soc')),
                     _parse_float(r.get('bio')),  _parse_float(r.get('fis')),
                     _parse_float(r.get('qui')),  _parse_float(r.get('fin')),
-                    _parse_float(r.get('tec')),
+                    _parse_float(r.get('tec')),  _parse_float(r.get('arte')),
                     str(r.get('data_importacao', '')),
                 ))
                 salvos += 1

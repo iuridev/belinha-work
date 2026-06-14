@@ -14,7 +14,7 @@ CABECALHO_AVALIACOES = [
     'perc_participacao', 'perc_acertos',
     'MAT', 'PORT', 'ING', 'HIST', 'GEO', 'CIE',
     'FILO', 'SOC', 'BIO', 'FIS', 'QUI', 'FIN', 'TEC',
-    'data_importacao'
+    'data_importacao', 'ARTE'
 ]
 
 
@@ -256,7 +256,7 @@ def salvar_avaliacoes_planilha(registros, bimestre, ano, tipo_avaliacao='PROVA P
         'turma': 'turma', 'tipo_avaliacao': 'tipo_avaliacao',
         'total_alunos': 'total_alunos', 'perc_participacao': 'perc_participacao',
         'perc_acertos': 'perc_acertos', 'data_importacao': None,
-        **{d: d.lower() for d in ['MAT','PORT','ING','HIST','GEO','CIE','FILO','SOC','BIO','FIS','QUI','FIN','TEC']}
+        **{d: d.lower() for d in ['MAT','PORT','ING','HIST','GEO','CIE','FILO','SOC','BIO','FIS','QUI','FIN','TEC','ARTE']}
     }
 
     for r in registros:
@@ -294,6 +294,9 @@ def salvar_avaliacoes_planilha(registros, bimestre, ano, tipo_avaliacao='PROVA P
                     merged.append(nv)
                 else:
                     merged.append(existing.get(col, '') or '')
+            # Garante que data_importacao sempre reflete o momento do import
+            idx_data = CABECALHO_AVALIACOES.index('data_importacao')
+            merged[idx_data] = agora
             col_fim = chr(ord('A') + len(CABECALHO_AVALIACOES) - 1)
             ws.update(f'A{row_idx}:{col_fim}{row_idx}',
                       [merged], value_input_option='USER_ENTERED')

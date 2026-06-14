@@ -3,7 +3,7 @@ import unicodedata
 import pandas as pd
 from io import StringIO
 
-DISC_COLUNAS = ['mat', 'port', 'ing', 'hist', 'geo', 'cie', 'filo', 'soc', 'bio', 'fis', 'qui', 'fin', 'tec']
+DISC_COLUNAS = ['mat', 'port', 'ing', 'hist', 'geo', 'cie', 'filo', 'soc', 'bio', 'fis', 'qui', 'fin', 'tec', 'arte']
 
 # Nomes alternativos de disciplina usados no SARESP → chave interna do sistema
 DISC_ALIAS = {
@@ -31,6 +31,9 @@ DISC_TAREFAS_ALIAS = {
     'QUIMICA':              'qui',
     'EDUCACAO FINANCEIRA':  'fin',
     'TECNOLOGIA':           'tec',
+    'ARTE':                 'arte',
+    'ARTES':                'arte',
+    'ARTES VISUAIS':        'arte',
 }
 
 

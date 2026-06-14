@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Devolutiva — {{ professor.nome }}</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #1a1a1a;
+      background: #e8eaf0;
+    }
+
+    /* ── Barra de controles ── */
+    .controles {
+      background: #1565C0;
+      padding: 10px 24px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .controles-titulo {
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
+      flex: 1;
+    }
+    .btn-ctrl {
+      padding: 7px 16px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-voltar  { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.4); }
+    .btn-pdf     { background: #c62828; color: #fff; }
+    .btn-word    { background: #fff; color: #1565C0; }
+
+    /* ── Página A4 ── */
+    .pagina {
+      max-width: 21cm;
+      margin: 24px auto;
+      background: #fff;
+      padding: 2cm 2.2cm;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    }
+
+    /* ── Cabeçalho ── */
+    .cabecalho {
+      text-align: center;
+      border-bottom: 3px solid #1565C0;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+    }
+    .cabecalho h1 {
+      font-size: 17px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #1565C0;
+      margin-bottom: 3px;
+    }
+    .cabecalho h2 {
+      font-size: 12px;
+      font-weight: normal;
+      color: #555;
+      margin-bottom: 6px;
+    }
+    .cabecalho .data-ger {
+      font-size: 11px;
+      color: #888;
+    }
+
+    /* ── Info professor ── */
+    .info-prof {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+      border: 1px solid #c5cae9;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .info-prof-item {
+      padding: 8px 12px;
+      border-right: 1px solid #c5cae9;
+    }
+    .info-prof-item:last-child { border-right: none; }
+    .info-prof-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #7986CB;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .info-prof-val {
+      font-size: 13px;
+      font-weight: bold;
+      color: #1a1a1a;
+    }
+
+    /* ── Seção por tipo ── */
+    .tipo-secao { margin-bottom: 22px; }
+    .tipo-titulo {
+      font-size: 12px;
+      font-weight: bold;
+      color: #1565C0;
+      text-transform: uppercase;
+      border-left: 4px solid #1565C0;
+      padding: 3px 0 3px 8px;
+      margin-bottom: 8px;
+    }
+
+    /* ── Tabela de desempenho ── */
+    .tab-dev {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+      margin-bottom: 5px;
+    }
+    .tab-dev th {
+      background: #1565C0;
+      color: #fff;
+      padding: 5px 7px;
+      font-size: 10px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .tab-dev th:nth-child(1),
+    .tab-dev th:nth-child(2) { text-align: left; }
+    .tab-dev td {
+      padding: 4px 7px;
+      border-bottom: 1px solid #e8eaf0;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .tab-dev td:nth-child(1),
+    .tab-dev td:nth-child(2) { text-align: left; }
+    .tab-dev tr:nth-child(even) td { background: #f5f7ff; }
+    .nota-ok   { color: #2E7D32; font-weight: bold; }
+    .nota-baixa { color: #c62828; font-weight: bold; }
+    .delta-pos { color: #2E7D32; }
+    .delta-neg { color: #c62828; }
+    .disc-nome { font-size: 9.5px; color: #555; }
+    .legenda-tab { font-size: 9.5px; color: #999; margin-top: 3px; }
+
+    /* ── Gráfico ── */
+    .grafico-secao {
+      border: 1px solid #e0e0e0;
+      border-radius: 5px;
+      padding: 14px 16px;
+      margin-bottom: 22px;
+    }
+    .grafico-secao h3 {
+      font-size: 12px;
+      font-weight: bold;
+      color: #1565C0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+    .grafico-wrap { position: relative; height: 260px; }
+
+    /* ── Observações ── */
+    .obs-secao {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px 14px;
+      margin-bottom: 30px;
+    }
+    .obs-titulo {
+      font-size: 11px;
+      font-weight: bold;
+      color: #555;
+      margin-bottom: 10px;
+    }
+    .linha-obs {
+      border-bottom: 1px solid #ccc;
+      height: 22px;
+      margin-bottom: 6px;
+    }
+
+    /* ── Assinaturas ── */
+    .assinaturas {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      margin-top: 10px;
+    }
+    .assin-bloco { text-align: center; }
+    .assin-espaco { height: 60px; }
+    .assin-linha {
+      border-top: 1px solid #333;
+      margin-bottom: 6px;
+    }
+    .assin-nome { font-size: 11px; font-weight: bold; }
+    .assin-cargo { font-size: 10px; color: #666; margin-top: 2px; }
+    .assin-data  { font-size: 10px; color: #999; margin-top: 4px; }
+
+    /* ── Impressão ── */
+    @media print {
+      .controles { display: none !important; }
+      body { background: white; }
+      .pagina {
+        margin: 0;
+        padding: 1.5cm 2cm;
+        box-shadow: none;
+        max-width: none;
+      }
+      @page { margin: 1.5cm 2cm; size: A4; }
+      .tipo-secao   { break-inside: avoid; }
+      .grafico-secao { break-inside: avoid; }
+      .assinaturas  { break-inside: avoid; }
+      .obs-secao    { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Controles (não aparecem na impressão) -->
+<div class="controles">
+  <a href="{{ url_for('ficha_professor', professor_id=professor.id, ano=ano) }}" class="btn-ctrl btn-voltar">← Voltar</a>
+  <button class="btn-ctrl btn-pdf" onclick="window.print()">⬇ Salvar PDF</button>
+  <form id="form-word" method="POST"
+        action="{{ url_for('devolutiva_word', professor_id=professor.id) }}"
+        target="iframe-dl" style="display:inline">
+    <input type="hidden" name="ano" value="{{ ano }}">
+    <input type="hidden" name="chart_image" id="chart_input_hidden">
+    <button type="button" class="btn-ctrl btn-word" onclick="exportarWord()">📄 Exportar Word</button>
+  </form>
+  <iframe id="iframe-dl" name="iframe-dl" style="display:none"></iframe>
+  <span class="controles-titulo">Dica para PDF: use Ctrl+P → Salvar como PDF no navegador</span>
+</div>
+
+<!-- Documento -->
+<div class="pagina">
+
+  <!-- Cabeçalho -->
+  <div class="cabecalho">
+    <h1>Devolutiva de Índices Individuais</h1>
+    <h2>Escola Estadual Professora Dona Belinha — SEDUC-SP</h2>
+    <p class="data-ger">Gerado em {{ data_geracao }}</p>
+  </div>
+
+  <!-- Info do professor -->
+  <div class="info-prof">
+    <div class="info-prof-item">
+      <span class="info-prof-label">Professor(a)</span>
+      <span class="info-prof-val">{{ professor.nome }}</span>
+    </div>
+    <div class="info-prof-item">
+      <span class="info-prof-label">CPF</span>
+      <span class="info-prof-val">{{ professor.cpf or 'Não informado' }}</span>
+    </div>
+    <div class="info-prof-item">
+      <span class="info-prof-label">Ano Letivo</span>
+      <span class="info-prof-val">{{ ano }}</span>
+    </div>
+  </div>
+
+  {% if not performance_por_tipo %}
+  <p style="color:#888;text-align:center;padding:30px">
+    Nenhum dado de avaliação encontrado para {{ professor.nome }} em {{ ano }}.
+  </p>
+  {% else %}
+
+  <!-- Tabelas por tipo de avaliação -->
+  {% for tipo, dados in performance_por_tipo.items() %}
+  <div class="tipo-secao">
+    <div class="tipo-titulo">{{ tipo }}</div>
+    <table class="tab-dev">
+      <thead>
+        <tr>
+          <th>Disciplina</th>
+          <th>Turma</th>
+          {% for b in dados.bimestres %}<th>{{ b }}° Bim</th>{% endfor %}
+          <th>Méd. Prof.</th>
+          <th>Méd. Escola</th>
+          <th>Dif.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in dados.performance %}
+        {% set vals = [] %}
+        {% set m_esc = [] %}
+        <tr>
+          <td>
+            <strong>{{ item.disciplina }}</strong><br>
+            <span class="disc-nome">{{ disciplinas_nomes.get(item.disciplina, item.disciplina) }}</span>
+          </td>
+          <td>{{ item.turma.split(' INTEGRAL')[0] }}</td>
+          {% for b in dados.bimestres %}
+            {% set dado = item.por_bimestre.get(b) %}
+            {% if dado and dado.valor %}
+              <td class="{{ 'nota-ok' if dado.valor >= 50 else 'nota-baixa' }}">
+                {{ dado.valor | round(1) }}%
+              </td>
+              {% set _ = vals.append(dado.valor) %}
+              {% if dado.media_escola %}{% set _ = m_esc.append(dado.media_escola) %}{% endif %}
+            {% else %}
+              <td style="color:#bbb">—</td>
+            {% endif %}
+          {% endfor %}
+          {% if vals %}
+            {% set mp = (vals | sum) / (vals | length) %}
+            {% set me = ((m_esc | sum) / (m_esc | length)) if m_esc else None %}
+            <td class="{{ 'nota-ok' if mp >= 50 else 'nota-baixa' }}">{{ mp | round(1) }}%</td>
+            <td style="color:#555">{{ me | round(1) if me else '—' }}{% if me %}%{% endif %}</td>
+            <td>
+              {% if me %}
+                <span class="{{ 'delta-pos' if mp >= me else 'delta-neg' }}">
+                  {{ '▲' if mp >= me else '▼' }}{{ (mp - me) | abs | round(1) }}
+                </span>
+              {% else %}—{% endif %}
+            </td>
+          {% else %}
+            <td>—</td><td>—</td><td>—</td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="legenda-tab">Verde ≥ 50% · Vermelho &lt; 50% · ▲▼ diferença em relação à média da escola</p>
+  </div>
+  {% endfor %}
+
+  <!-- Gráfico de evolução -->
+  <div class="grafico-secao">
+    <h3>Evolução do Desempenho</h3>
+    <div class="grafico-wrap">
+      <canvas id="dev-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Observações -->
+  <div class="obs-secao">
+    <div class="obs-titulo">Observações / Encaminhamentos do(a) Diretor(a):</div>
+    {% for _ in range(4) %}
+    <div class="linha-obs"></div>
+    {% endfor %}
+  </div>
+
+  <!-- Assinaturas -->
+  <div class="assinaturas">
+    <div class="assin-bloco">
+      <div class="assin-espaco"></div>
+      <div class="assin-linha"></div>
+      <div class="assin-nome">Diretor(a)</div>
+      <div class="assin-cargo">E.E. Professora Dona Belinha</div>
+      <div class="assin-data">Data: ___/___/______</div>
+    </div>
+    <div class="assin-bloco">
+      <div class="assin-espaco"></div>
+      <div class="assin-linha"></div>
+      <div class="assin-nome">{{ professor.nome }}</div>
+      <div class="assin-cargo">Professor(a)</div>
+      <div class="assin-data">Data: ___/___/______</div>
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+
+<script>
+const DADOS = {{ performance_por_tipo | tojson }};
+const CORES = [
+  '#1565C0','#E65100','#2E7D32','#6A1B9A',
+  '#00838F','#AD1457','#F57F17','#37474F',
+  '#558B2F','#4527A0','#bf360c','#01579b'
+];
+
+// Coleta todos os bimestres de todos os tipos
+const allBim = new Set();
+Object.values(DADOS).forEach(d => d.bimestres.forEach(b => allBim.add(b)));
+const bimOrdenados = [...allBim].sort((a, b) => a - b);
+
+// Monta datasets (uma linha por disciplina × turma × tipo)
+const datasets = [];
+let cIdx = 0;
+Object.entries(DADOS).forEach(([tipo, dados]) => {
+  dados.performance.forEach(item => {
+    const pontos = bimOrdenados.map(b => {
+      const d = item.por_bimestre[b] ?? item.por_bimestre[String(b)];
+      return (d && d.valor != null) ? d.valor : null;
+    });
+    if (!pontos.every(p => p === null)) {
+      const turmaLabel = item.turma.split('INTEGRAL')[0].trim().split(' ').slice(0, 3).join(' ');
+      datasets.push({
+        label: `${item.disciplina} · ${turmaLabel} (${tipo})`,
+        data: pontos,
+        borderColor: CORES[cIdx % CORES.length],
+        backgroundColor: CORES[cIdx % CORES.length] + '22',
+        tension: 0.3,
+        spanGaps: true,
+        pointRadius: 4,
+      });
+      cIdx++;
+    }
+  });
+});
+
+if (datasets.length > 0) {
+  new Chart(document.getElementById('dev-chart'), {
+    type: 'line',
+    data: { labels: bimOrdenados.map(b => b + '° Bimestre'), datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 14, padding: 10 } },
+        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y != null ? c.parsed.y + '%' : '—'}` } },
+      },
+      scales: {
+        y: { min: 0, max: 100, ticks: { callback: v => v + '%', font: { size: 10 } } },
+        x: { ticks: { font: { size: 10 } } },
+      },
+    },
+  });
+}
+
+function exportarWord() {
+  const canvas = document.getElementById('dev-chart');
+  document.getElementById('chart_input_hidden').value = canvas
+    ? canvas.toDataURL('image/png')
+    : '';
+  document.getElementById('form-word').submit();
+}
+</script>
+</body>
+</html>

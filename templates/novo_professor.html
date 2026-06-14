@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Novo Professor{% endblock %}
+
+{% block conteudo %}
+<div class="page-header">
+  <div>
+    <a href="{{ url_for('professores') }}" class="btn btn-sm" style="margin-bottom:8px">← Voltar</a>
+    <h1>Cadastrar Professor</h1>
+  </div>
+</div>
+
+<div class="card" style="max-width:480px">
+  <h2 class="card-titulo">Dados do Professor</h2>
+  <p class="texto-ajuda">Os dados serão salvos diretamente na aba <strong>professores</strong> da planilha Google Sheets.</p>
+
+  <form method="POST">
+    <div class="campo">
+      <label>Nome completo *</label>
+      <input type="text" name="nome" placeholder="Ex: João da Silva" required autofocus>
+    </div>
+    <div class="campo">
+      <label>CPF</label>
+      <input type="text" name="cpf" placeholder="000.000.000-00" maxlength="14"
+             oninput="formatarCPF(this)">
+    </div>
+    <div style="display:flex; gap:10px; margin-top:4px">
+      <button type="submit" class="btn btn-primario" style="flex:1">Salvar na planilha</button>
+      <a href="{{ url_for('professores') }}" class="btn" style="flex:1; text-align:center">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="max-width:480px">
+  <h2 class="card-titulo">Pré-requisito</h2>
+  <p class="texto-ajuda">Para salvar na planilha, é necessário ter o arquivo <code>credentials.json</code> na pasta do sistema e ter compartilhado a planilha com o e-mail da conta de serviço.</p>
+  <ol class="lista-instrucoes">
+    <li>Baixe as credenciais no <strong>Google Cloud Console</strong></li>
+    <li>Salve como <code>credentials.json</code> na pasta <code>belinha-work/</code></li>
+    <li>Compartilhe a planilha com o e-mail da conta de serviço como <strong>Editor</strong></li>
+  </ol>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function formatarCPF(input) {
+  let v = input.value.replace(/\D/g, '').substring(0, 11);
+  if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+  input.value = v;
+}
+</script>
+{% endblock %}

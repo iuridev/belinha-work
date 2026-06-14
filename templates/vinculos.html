@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% block title %}Vínculos{% endblock %}
+
+{% block conteudo %}
+<div class="page-header">
+  <h1>Vínculos Professor × Disciplina × Turma</h1>
+  <div class="filtros-inline">
+    <form method="GET">
+      <select name="ano" onchange="this.form.submit()">
+        {% for a in anos %}<option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>{% endfor %}
+      </select>
+    </form>
+  </div>
+</div>
+
+<div class="grid-2col">
+
+  <!-- Painel esquerdo: formulário de vínculo -->
+  <div class="card">
+    <h2 class="card-titulo">Adicionar vínculo</h2>
+
+    <div class="campo">
+      <label>1. Selecione o professor</label>
+      <select id="sel-professor">
+        <option value="">Selecione...</option>
+        {% for p in professores %}
+        <option value="{{ p.id }}" data-nome="{{ p.nome }}">{{ p.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="campo">
+      <label>2. Selecione a disciplina</label>
+      <select id="sel-disciplina" onchange="carregarTurmas()">
+        <option value="">Selecione...</option>
+        {% for d in disciplinas %}
+        <option value="{{ d }}">{{ disciplinas_nomes[d] }} ({{ d }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Turmas aparecem aqui dinamicamente -->
+    <div id="turmas-wrapper" style="display:none">
+      <label class="campo-label">3. Selecione as turmas</label>
+
+      <div id="turmas-loading" style="display:none" class="texto-ajuda">Carregando turmas...</div>
+      <div id="turmas-vazio"   style="display:none" class="aviso-info">
+        Nenhuma turma com dados para essa disciplina no ano selecionado.
+      </div>
+
+      <div class="legenda-cores">
+        <span class="leg-item"><span class="leg-dot dot-livre"></span> Sem vínculo</span>
+        <span class="leg-item"><span class="leg-dot dot-outro"></span> Vinculada a outro professor</span>
+        <span class="leg-item"><span class="leg-dot dot-proprio"></span> Já vinculada a você</span>
+      </div>
+
+      <div id="lista-turmas"></div>
+
+      <div style="display:flex; gap:8px; margin-top:14px">
+        <button class="btn btn-sm" type="button" onclick="marcarTodas(true)">Marcar todas</button>
+        <button class="btn btn-sm" type="button" onclick="marcarTodas(false)">Desmarcar todas</button>
+      </div>
+
+      <button class="btn btn-primario btn-bloco" style="margin-top:12px"
+              onclick="salvarVinculos()">
+        Salvar vínculos selecionados
+      </button>
+      <p id="msg-salvar" class="texto-ajuda" style="margin-top:8px"></p>
+    </div>
+
+    {% if not turmas %}
+    <div class="aviso-info">Importe um CSV primeiro para que as turmas apareçam.</div>
+    {% endif %}
+  </div>
+
+  <!-- Painel direito: vínculos existentes -->
+  <div class="card">
+    <h2 class="card-titulo">Vínculos cadastrados — {{ ano }}</h2>
+    {% if vinculos %}
+    <table class="tabela" id="tabela-vinculos">
+      <thead>
+        <tr><th>Professor</th><th>Disciplina</th><th>Turma</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for v in vinculos %}
+        <tr id="tr-{{ v.id }}">
+          <td>{{ v.nome_professor }}</td>
+          <td><span class="chip chip-disc">{{ v.disciplina }}</span></td>
+          <td class="turma-cell">{{ v.turma }}</td>
+          <td>
+            <button class="btn btn-sm btn-perigo" onclick="removerVinculo({{ v.id }})">✕</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="texto-vazio">Nenhum vínculo para {{ ano }}.</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ANO = {{ ano }};
+
+async function carregarTurmas() {
+  const disc    = document.getElementById('sel-disciplina').value;
+  const wrapper = document.getElementById('turmas-wrapper');
+  const loading = document.getElementById('turmas-loading');
+  const vazio   = document.getElementById('turmas-vazio');
+  const lista   = document.getElementById('lista-turmas');
+
+  if (!disc) { wrapper.style.display = 'none'; return; }
+
+  wrapper.style.display = 'block';
+  loading.style.display = 'block';
+  vazio.style.display   = 'none';
+  lista.innerHTML       = '';
+
+  const resp = await fetch(`/api/turmas-por-disciplina?disciplina=${disc}&ano=${ANO}`);
+  const turmas = await resp.json();
+
+  loading.style.display = 'none';
+
+  if (!turmas.length) { vazio.style.display = 'block'; return; }
+
+  const profSelecionadoId = document.getElementById('sel-professor').value;
+
+  lista.innerHTML = turmas.map(t => {
+    const temVinculo  = t.professor_id !== null;
+    const ehProprio   = temVinculo && String(t.professor_id) === String(profSelecionadoId);
+    const primeiroNome = t.nome_professor ? t.nome_professor.split(' ')[0] : '';
+
+    let cls   = 'turma-item';
+    let badge = '';
+    let checked = '';
+
+    if (ehProprio) {
+      cls    += ' turma-proprio';
+      badge   = `<span class="badge-prof badge-proprio">✔ ${primeiroNome}</span>`;
+      checked = 'checked';
+    } else if (temVinculo) {
+      cls   += ' turma-outro';
+      badge  = `<span class="badge-prof badge-outro">${primeiroNome}</span>`;
+    }
+
+    const turmaEscapada = t.turma.replace(/"/g, '&quot;');
+    return `
+      <label class="${cls}">
+        <input type="checkbox" value="${turmaEscapada}" ${checked}>
+        <span class="turma-item-nome">${t.turma}</span>
+        ${badge}
+      </label>`;
+  }).join('');
+}
+
+function marcarTodas(marcar) {
+  document.querySelectorAll('#lista-turmas input[type=checkbox]')
+    .forEach(cb => cb.checked = marcar);
+}
+
+async function salvarVinculos() {
+  const professor_id   = document.getElementById('sel-professor').value;
+  const nome_professor = document.getElementById('sel-professor').selectedOptions[0]?.dataset.nome;
+  const disciplina     = document.getElementById('sel-disciplina').value;
+  const msg            = document.getElementById('msg-salvar');
+
+  if (!professor_id || !disciplina) {
+    msg.style.color = '#c62828';
+    msg.textContent = 'Selecione professor e disciplina.';
+    return;
+  }
+
+  const turmasSelecionadas = [...document.querySelectorAll('#lista-turmas input[type=checkbox]:checked')]
+    .map(cb => cb.value);
+
+  if (!turmasSelecionadas.length) {
+    msg.style.color = '#c62828';
+    msg.textContent = 'Selecione ao menos uma turma.';
+    return;
+  }
+
+  const resp = await fetch('/vinculos/salvar-lote', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      professor_id, nome_professor, disciplina,
+      turmas: turmasSelecionadas,
+      ano_letivo: ANO
+    })
+  });
+
+  const result = await resp.json();
+  if (result.ok) {
+    msg.style.color = '#2e7d32';
+    msg.textContent = `${result.salvos} vínculo(s) salvos! Recarregando...`;
+    setTimeout(() => location.reload(), 900);
+  } else {
+    msg.style.color = '#c62828';
+    msg.textContent = 'Erro ao salvar.';
+  }
+}
+
+async function removerVinculo(id) {
+  if (!confirm('Remover este vínculo?')) return;
+  const resp = await fetch('/vinculos/remover/' + id, {method: 'DELETE'});
+  if (resp.ok) document.getElementById('tr-' + id)?.remove();
+}
+
+// Recarrega turmas se o professor mudar (para atualizar destaque "próprio")
+document.getElementById('sel-professor').addEventListener('change', () => {
+  if (document.getElementById('sel-disciplina').value) carregarTurmas();
+});
+</script>
+{% endblock %}

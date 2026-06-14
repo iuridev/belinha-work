@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Importar CSV{% endblock %}
+
+{% block conteudo %}
+<div class="page-header">
+  <h1>Importar Avaliação</h1>
+</div>
+
+<div class="card" style="max-width:580px">
+  <h2 class="card-titulo">Arquivo CSV do SEDUC-SP</h2>
+  <p class="texto-ajuda">Exporte o resultado da avaliação no portal SEDUC-SP como CSV e envie aqui. O sistema identificará automaticamente as turmas e resultados por disciplina.</p>
+
+  <form method="POST" enctype="multipart/form-data" id="form-importar">
+    <div class="campo">
+      <label>Tipo de avaliação</label>
+      <select name="tipo_avaliacao" required>
+        <option value="">Selecione...</option>
+        {% for t in tipos %}
+        <option value="{{ t }}">{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="campo">
+      <label>Bimestre</label>
+      <select name="bimestre" required>
+        <option value="">Selecione...</option>
+        <option value="1">1° Bimestre</option>
+        <option value="2">2° Bimestre</option>
+        <option value="3">3° Bimestre</option>
+        <option value="4">4° Bimestre</option>
+      </select>
+    </div>
+
+    <div class="campo">
+      <label>Ano letivo</label>
+      <select name="ano" required>
+        {% for a in anos %}
+        <option value="{{ a }}" {% if a == ano_atual %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="campo">
+      <label>Arquivo CSV</label>
+      <div class="upload-area" id="upload-area">
+        <input type="file" name="arquivo" id="arquivo" accept=".csv" required>
+        <div class="upload-label" id="upload-label">
+          <span class="upload-icon">↑</span>
+          <span>Clique ou arraste o arquivo CSV aqui</span>
+        </div>
+      </div>
+      <span class="arquivo-nome" id="arquivo-nome"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primario btn-bloco" id="btn-importar">
+      Importar
+    </button>
+  </form>
+</div>
+
+<div class="card" style="max-width:580px">
+  <h2 class="card-titulo">Como exportar o CSV do SEDUC-SP</h2>
+  <ol class="lista-instrucoes">
+    <li>Acesse o portal de avaliações da SEDUC-SP</li>
+    <li>Filtre por escola e bimestre</li>
+    <li>Clique em <strong>Exportar → CSV</strong></li>
+    <li>Salve o arquivo e importe aqui</li>
+  </ol>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const input = document.getElementById('arquivo');
+const label = document.getElementById('upload-label');
+const nome  = document.getElementById('arquivo-nome');
+
+input.addEventListener('change', () => {
+  if (input.files[0]) {
+    nome.textContent = '✔ ' + input.files[0].name;
+    label.style.display = 'none';
+  }
+});
+
+document.getElementById('form-importar').addEventListener('submit', () => {
+  document.getElementById('btn-importar').textContent = 'Importando...';
+  document.getElementById('btn-importar').disabled = true;
+});
+</script>
+{% endblock %}

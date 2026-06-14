@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+{% block title %}Ficha — {{ professor.nome }}{% endblock %}
+
+{% block conteudo %}
+<div class="page-header">
+  <div>
+    <a href="{{ url_for('professores', ano=ano) }}" class="btn btn-sm" style="margin-bottom:8px">← Voltar</a>
+    <h1>{{ professor.nome }}</h1>
+    <p class="subtitulo-page">CPF: {{ professor.cpf or 'Não informado' }}</p>
+  </div>
+  <div class="filtros-inline" style="display:flex;gap:10px;align-items:center">
+    <form method="GET" id="form-filtros">
+      <select name="ano" onchange="this.form.submit()">
+        {% for a in anos %}<option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>{% endfor %}
+      </select>
+      <input type="hidden" name="tipo" value="{{ tipo_sel }}">
+    </form>
+    <a href="{{ url_for('devolutiva_professor', professor_id=professor.id, ano=ano) }}"
+       class="btn btn-sm" style="background:#1565C0;color:white;border:none;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;white-space:nowrap">
+      ⬇ Devolutiva
+    </a>
+  </div>
+</div>
+
+<!-- Filtro por tipo de avaliação -->
+{% if tipos_disponiveis %}
+<div class="card" style="padding:14px 20px">
+  <div class="tipos-filtro">
+    <span class="tipos-label">Tipo de avaliação:</span>
+    <a href="{{ url_for('ficha_professor', professor_id=professor.id, ano=ano, tipo='') }}"
+       class="chip chip-tipo {% if not tipo_sel %}chip-tipo-ativo{% endif %}">
+      Todos
+    </a>
+    {% for t in tipos_disponiveis %}
+    <a href="{{ url_for('ficha_professor', professor_id=professor.id, ano=ano, tipo=t) }}"
+       class="chip chip-tipo {% if tipo_sel == t %}chip-tipo-ativo{% endif %}">
+      {{ t }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if not performance %}
+<div class="card aviso-vazio">
+  <p>Nenhum dado de avaliação encontrado para {{ professor.nome }} em {{ ano }}
+     {% if tipo_sel %}({{ tipo_sel }}){% endif %}.</p>
+  <p class="texto-ajuda">
+    Verifique se existem <a href="{{ url_for('vinculos', ano=ano) }}">vínculos cadastrados</a>
+    para este professor e se o CSV foi importado.
+  </p>
+</div>
+{% else %}
+
+<!-- Tabela de desempenho -->
+<div class="card">
+  <h2 class="card-titulo">
+    Desempenho por Bimestre — {{ ano }}
+    {% if tipo_sel %}<span class="chip chip-tipo chip-tipo-ativo" style="font-size:12px;margin-left:8px">{{ tipo_sel }}</span>{% endif %}
+  </h2>
+
+  {% if tipo_sel %}
+  {# ── Modo: tipo específico — colunas = bimestres ── #}
+  <table class="tabela tabela-ficha">
+    <thead>
+      <tr>
+        <th>Disciplina</th>
+        <th>Turma</th>
+        {% for b in bimestres %}<th>{{ b }}° Bim</th>{% endfor %}
+        <th>Média</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in performance %}
+      <tr>
+        <td>
+          <span class="chip chip-disc">{{ item.disciplina }}</span>
+          <br><small>{{ disciplinas_nomes.get(item.disciplina, item.disciplina) }}</small>
+        </td>
+        <td class="turma-cell">{{ item.turma }}</td>
+        {% set valores = [] %}
+        {% for b in bimestres %}
+          {% set dado = item.por_bimestre.get(b) %}
+          {% if dado and dado.valor %}
+            <td class="nota {{ 'nota-ok' if dado.valor >= 50 else 'nota-baixa' }}">
+              {{ dado.valor | round(1) }}%
+              {% if dado.media_escola %}
+              <span class="delta {{ 'positivo' if dado.valor >= dado.media_escola else 'negativo' }}">
+                {{ '▲' if dado.valor >= dado.media_escola else '▼' }}{{ (dado.valor - dado.media_escola) | abs | round(1) }}
+              </span>
+              {% endif %}
+            </td>
+            {% set _ = valores.append(dado.valor) %}
+          {% else %}
+            <td class="nota nota-nd">—</td>
+          {% endif %}
+        {% endfor %}
+        <td class="nota {{ 'nota-ok' if valores and (valores|sum / valores|length) >= 50 else 'nota-baixa' if valores else '' }}">
+          {% if valores %}{{ (valores|sum / valores|length) | round(1) }}%{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="legenda-tabela">▲▼ Diferença em relação à média da escola naquele tipo · Verde ≥ 50% · Vermelho &lt; 50%</p>
+
+  {% else %}
+  {# ── Modo: todos os tipos — agrupa por tipo e bimestre ── #}
+  {% for item in performance %}
+  <div style="margin-bottom:20px">
+    <div class="ficha-subtitulo">
+      <span class="chip chip-disc">{{ item.disciplina }}</span>
+      <span class="turma-cell" style="margin-left:8px">{{ item.turma }}</span>
+    </div>
+    {% set entradas = item.por_bimestre.values() | list | sort(attribute='bimestre') %}
+    {% if entradas %}
+    <table class="tabela" style="margin-top:8px">
+      <thead>
+        <tr><th>Tipo de Avaliação</th><th>Bimestre</th><th>Resultado</th><th>Média da Escola</th><th>Diferença</th></tr>
+      </thead>
+      <tbody>
+        {% for dado in entradas %}
+        {% if dado.valor %}
+        <tr>
+          <td><span class="chip chip-tipo-tabela">{{ dado.tipo }}</span></td>
+          <td>{{ dado.bimestre }}° Bimestre</td>
+          <td class="nota {{ 'nota-ok' if dado.valor >= 50 else 'nota-baixa' }}">
+            {{ dado.valor | round(1) }}%
+          </td>
+          <td class="nota-suave">{{ dado.media_escola | round(1) if dado.media_escola else '—' }}%</td>
+          <td>
+            {% if dado.media_escola %}
+            <span class="delta {{ 'positivo' if dado.valor >= dado.media_escola else 'negativo' }}">
+              {{ '▲' if dado.valor >= dado.media_escola else '▼' }}{{ (dado.valor - dado.media_escola) | abs | round(1) }}
+            </span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="texto-vazio">Sem dados para esta turma.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+
+<!-- Gráfico de evolução -->
+<div class="card">
+  <h2 class="card-titulo">Evolução
+    {% if tipo_sel %}— {{ tipo_sel }}{% else %}— Todos os tipos{% endif %}
+  </h2>
+  <div class="chart-container">
+    <canvas id="grafico-evolucao"></canvas>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if performance %}
+<script>
+const TIPO_SEL   = {{ tipo_sel | tojson }};
+const bimestres  = {{ bimestres | tojson }};
+const series     = {{ performance | tojson }};
+
+const CORES = [
+  '#1565C0','#E65100','#2E7D32','#6A1B9A',
+  '#00838F','#AD1457','#F57F17','#37474F',
+  '#558B2F','#4527A0'
+];
+
+let datasets = [];
+
+if (TIPO_SEL) {
+  // Modo tipo específico: uma linha por (disciplina × turma)
+  datasets = series.map((item, i) => {
+    const dados = bimestres.map(b => {
+      const d = item.por_bimestre[b];
+      return (d && d.valor) ? d.valor : null;
+    });
+    const turmaCurta = item.turma.split('INTEGRAL')[0].trim();
+    return {
+      label: item.disciplina + ' · ' + turmaCurta,
+      data: dados,
+      borderColor: CORES[i % CORES.length],
+      backgroundColor: CORES[i % CORES.length] + '22',
+      tension: 0.3, spanGaps: true,
+    };
+  });
+} else {
+  // Modo todos: agrupa entradas por (disciplina × turma × tipo)
+  const linhas = {};
+  series.forEach((item, si) => {
+    Object.values(item.por_bimestre).forEach(d => {
+      if (!d.valor) return;
+      const key = item.disciplina + '|' + item.turma + '|' + d.tipo;
+      if (!linhas[key]) {
+        linhas[key] = {
+          label: item.disciplina + ' · ' + item.turma.split('INTEGRAL')[0].trim() + ' (' + d.tipo + ')',
+          pontos: {},
+          cor: CORES[Object.keys(linhas).length % CORES.length],
+        };
+      }
+      linhas[key].pontos[d.bimestre] = d.valor;
+    });
+  });
+
+  datasets = Object.values(linhas).map(l => ({
+    label: l.label,
+    data: bimestres.map(b => l.pontos[b] ?? null),
+    borderColor: l.cor,
+    backgroundColor: l.cor + '22',
+    tension: 0.3, spanGaps: true,
+  }));
+}
+
+new Chart(document.getElementById('grafico-evolucao'), {
+  type: 'line',
+  data: { labels: bimestres.map(b => b + '° Bimestre'), datasets },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y ?? '—') + '%' } }
+    },
+    scales: {
+      y: { min: 0, max: 100, ticks: { callback: v => v + '%' } }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

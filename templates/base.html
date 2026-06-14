@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Avaliação Docente{% endblock %} — Dona Belinha</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+{% if session.usuario %}
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">📊</span>
+    <span class="sidebar-titulo">Avaliação<br>Docente</span>
+  </div>
+
+  <ul class="sidebar-menu">
+    <li><a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}ativo{% endif %}">
+      <span class="icon">⊞</span> Dashboard
+    </a></li>
+    <li><a href="{{ url_for('importar') }}" class="{% if request.endpoint == 'importar' %}ativo{% endif %}">
+      <span class="icon">↑</span> Importar CSV
+    </a></li>
+    <li><a href="{{ url_for('vinculos') }}" class="{% if request.endpoint == 'vinculos' %}ativo{% endif %}">
+      <span class="icon">⇄</span> Vínculos
+    </a></li>
+    <li><a href="{{ url_for('professores') }}" class="{% if request.endpoint in ['professores','ficha_professor'] %}ativo{% endif %}">
+      <span class="icon">👤</span> Professores
+    </a></li>
+  </ul>
+
+  <div class="sidebar-footer">
+    <span class="usuario-nome">{{ session.usuario.nome }}</span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn-sync" id="btn-sync" onclick="sincronizar()" title="Sincronizar dados da planilha">↻</button>
+      <a href="{{ url_for('logout') }}" class="btn-logout">Sair</a>
+    </div>
+  </div>
+</nav>
+
+<main class="conteudo">
+{% endif %}
+
+  {% with msgs = get_flashed_messages(with_categories=True) %}
+    {% for cat, msg in msgs %}
+      <div class="alerta alerta-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  {% block conteudo %}{% endblock %}
+
+{% if session.usuario %}
+</main>
+{% endif %}
+
+{% block scripts %}{% endblock %}
+
+{% if session.usuario %}
+<div id="toast-sync" class="toast" style="display:none"></div>
+<script>
+async function sincronizar() {
+  const btn = document.getElementById('btn-sync');
+  btn.textContent = '↻';
+  btn.classList.add('girando');
+  const resp = await fetch('/sincronizar', {method:'POST'});
+  const r = await resp.json();
+  btn.classList.remove('girando');
+  const toast = document.getElementById('toast-sync');
+  toast.textContent = r.erros && r.erros.length
+    ? 'Sincronizado parcialmente. Verifique as URLs das abas.'
+    : `✔ ${r.vinculos} vínculos · ${r.avaliacoes} avaliações carregados`;
+  toast.className = 'toast ' + (r.erros?.length ? 'toast-aviso' : 'toast-ok');
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 4000);
+}
+</script>
+{% endif %}
+</body>
+</html>

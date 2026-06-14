@@ -1,3 +1,4 @@
+import re
 import unicodedata
 import pandas as pd
 from io import StringIO
@@ -11,6 +12,25 @@ DISC_ALIAS = {
     'GEO':  'geo',  'CIE':  'cie',  'FILO': 'filo',  'FIL': 'filo',  # FIL = Filosofia (SARESP)
     'SOC':  'soc',  'BIO':  'bio',  'FIS':  'fis',
     'QUI':  'qui',  'FIN':  'fin',  'TEC':  'tec',
+}
+
+# Nomes de disciplina no bloco de filtros do CSV de TAREFAS → coluna interna
+DISC_TAREFAS_ALIAS = {
+    'LINGUA PORTUGUESA':    'port',
+    'MATEMATICA':           'mat',
+    'LINGUA INGLESA':       'ing',
+    'INGLES':               'ing',
+    'HISTORIA':             'hist',
+    'GEOGRAFIA':            'geo',
+    'CIENCIAS':             'cie',
+    'CIENCIAS DA NATUREZA': 'cie',
+    'FILOSOFIA':            'filo',
+    'SOCIOLOGIA':           'soc',
+    'BIOLOGIA':             'bio',
+    'FISICA':               'fis',
+    'QUIMICA':              'qui',
+    'EDUCACAO FINANCEIRA':  'fin',
+    'TECNOLOGIA':           'tec',
 }
 
 
@@ -61,7 +81,8 @@ def parse_csv(conteudo_bytes):
     tem_nota_med  = any('MEDIA' in c for c in cols_norm)
 
     if tem_qualidade:
-        return _parse_tarefas(df, cols_norm, idx_turma)
+        disc_col = _detectar_disciplina_csv(texto)
+        return _parse_tarefas(df, cols_norm, idx_turma, disc_col)
     elif tem_acertos:
         return _parse_prova_paulista(df, cols_norm, idx_turma)
     elif tem_nota_med:
@@ -157,18 +178,29 @@ def _parse_saresp(df, cols_norm, cols_orig, idx_turma):
 
 # ── Formato TAREFAS ───────────────────────────────────────────────────────────
 
-def _parse_tarefas(df, cols_norm, idx_turma):
+def _detectar_disciplina_csv(texto):
+    """
+    Extrai a disciplina do bloco de filtros do CSV de TAREFAS.
+    Procura por 'NmDisciplina é LINGUA PORTUGUESA' e retorna a chave interna ('port').
+    Retorna None para o arquivo geral (sem filtro de disciplina).
+    """
+    match = re.search(r'NmDisciplina\s+\S+\s+(.+?)[\r\n]', texto, re.IGNORECASE)
+    if not match:
+        return None
+    nome = _normalizar(match.group(1).strip())
+    return DISC_TAREFAS_ALIAS.get(nome)
+
+
+def _parse_tarefas(df, cols_norm, idx_turma, disc_col=None):
     """
     CSV de TAREFAS do SEDUC-SP.
-    Colunas-chave: Matrículas Ativas, % Tarefas Realizadas, % Acertos, Índice de Qualidade (IQ).
-    Armazena IQ em perc_acertos e % Tarefas Realizadas em perc_participacao.
-    Não há dados por disciplina — todas as colunas de disc ficam nulas.
+    Se disc_col for detectado (ex: 'port'), armazena o IQ nessa coluna de disciplina
+    e deixa perc_acertos nulo — assim só o professor daquela disciplina vê o dado.
+    Se não houver disciplina (arquivo geral), armazena o IQ em perc_acertos como fallback
+    para todos os professores vinculados à turma.
     """
     idx_matriculas = next((i for i, c in enumerate(cols_norm) if 'MATRICULA' in c), 1)
-    idx_iq = next(
-        (i for i, c in enumerate(cols_norm) if 'QUALIDADE' in c),
-        None
-    )
+    idx_iq = next((i for i, c in enumerate(cols_norm) if 'QUALIDADE' in c), None)
     idx_perc_tarefas = next(
         (i for i, c in enumerate(cols_norm)
          if '%' in c and 'TAREFAS' in c and 'REALIZAD' in c and 'ALUNOS' not in c),
@@ -189,14 +221,20 @@ def _parse_tarefas(df, cols_norm, idx_turma):
         if total_alunos == 0:
             continue
 
+        iq = _parse_percent(row.iloc[idx_iq]) if idx_iq is not None else None
+
         rec = {
             'turma':             turma,
             'total_alunos':      total_alunos,
             'perc_participacao': _parse_percent(row.iloc[idx_perc_tarefas]) if idx_perc_tarefas is not None else None,
-            'perc_acertos':      _parse_percent(row.iloc[idx_iq]) if idx_iq is not None else None,
+            # Arquivo com disciplina: IQ vai para a coluna da disciplina
+            # Arquivo geral: IQ vai para perc_acertos (fallback para qualquer professor)
+            'perc_acertos':      iq if disc_col is None else None,
         }
         for disc in DISC_COLUNAS:
             rec[disc] = None
+        if disc_col:
+            rec[disc_col] = iq
 
         registros.append(rec)
 

@@ -118,17 +118,25 @@ def _get_sheet(nome_aba):
     scopes = ['https://www.googleapis.com/auth/spreadsheets']
 
     # 1. Variável de ambiente (produção / Vercel)
-    creds_json = os.getenv('GOOGLE_CREDENTIALS_JSON')
+    creds_json = os.getenv('GOOGLE_CREDENTIALS_JSON', '').strip()
     if creds_json:
-        creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=scopes)
+        try:
+            creds_dict = json.loads(creds_json)
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f'GOOGLE_CREDENTIALS_JSON inválido ({e}). '
+                'Verifique no painel do Vercel se o conteúdo é o JSON completo do credentials.json '
+                'em uma única linha (sem quebras de linha).'
+            )
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID).worksheet(nome_aba)
 
     # 2. Arquivo local (desenvolvimento)
     if not os.path.exists(CREDENTIALS_FILE):
         raise FileNotFoundError(
-            f'Arquivo {CREDENTIALS_FILE} não encontrado. '
-            'Baixe as credenciais da conta de serviço no Google Cloud Console '
-            'ou defina a variável de ambiente GOOGLE_CREDENTIALS_JSON.'
+            f'Credenciais não encontradas. '
+            'Em produção: defina GOOGLE_CREDENTIALS_JSON no Vercel. '
+            'Em desenvolvimento: coloque credentials.json na raiz do projeto.'
         )
     creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=scopes)
     return gspread.authorize(creds).open_by_key(SPREADSHEET_ID).worksheet(nome_aba)
